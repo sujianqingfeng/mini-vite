@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+
+// 上面这句话是当前文件执行的关键
+
+require("../dist/index.js")
