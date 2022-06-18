@@ -217,6 +217,31 @@ var createPluginContainer = (plugins) => {
   return pluginContainer;
 };
 
+// src/node/server/middlewares/indexHtml.ts
+var import_path4 = __toESM(require("path"));
+var import_fs_extra2 = require("fs-extra");
+function indexHtmlMiddware(serverContext) {
+  return async (req, res, next) => {
+    if (req.url === "/") {
+      const { root } = serverContext;
+      const indexHtmlPath = import_path4.default.join(root, "index.html");
+      if (await (0, import_fs_extra2.pathExists)(indexHtmlPath)) {
+        const rawHtml = await (0, import_fs_extra2.readFile)(indexHtmlPath, "utf-8");
+        let html = rawHtml;
+        for (const plugin of serverContext.plugins) {
+          if (plugin.transformHtml) {
+            html = plugin.transformHtml(html);
+          }
+        }
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html");
+        return res.end(html);
+      }
+    }
+    return next();
+  };
+}
+
 // src/node/server/index.ts
 async function startDevServer() {
   const app = (0, import_connect.default)();
@@ -236,6 +261,7 @@ async function startDevServer() {
       await plugin.configureServer(serverContext);
     }
   }
+  app.use(indexHtmlMiddware(serverContext));
   app.listen(3e3, async () => {
     await optimizer(root);
     console.log((0, import_picocolors2.green)("No-Bundle Server start!"), `\u8017\u65F6\uFF1A${Date.now() - startTime}ms`);
