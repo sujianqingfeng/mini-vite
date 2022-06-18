@@ -7,12 +7,39 @@ import { blue, green } from "picocolors"
 
 import { optimizer } from "../optimizer/index"
 
+import { Plugin } from "../plugin"
+import { resolvePlugins } from "../plugins/index"
+import { createPluginContainer, PluginContainer } from "../pluginContainer"
+
+export interface ServerContext {
+  root: string
+  pluginContainer: PluginContainer
+  app: connect.Server
+  plugins: Plugin[]
+}
+
 export async function startDevServer() {
   const app = connect()
   const root = process.cwd()
   console.log("root", root)
 
   const startTime = Date.now()
+
+  const plugins = resolvePlugins()
+  const pluginContainer = createPluginContainer(plugins)
+
+  const serverContext: ServerContext = {
+    root: process.cwd(),
+    app,
+    pluginContainer,
+    plugins,
+  }
+
+  for (const plugin of plugins) {
+    if (plugin.configureServer) {
+      await plugin.configureServer(serverContext)
+    }
+  }
 
   app.listen(3000, async () => {
     await optimizer(root)

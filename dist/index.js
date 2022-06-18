@@ -155,12 +155,87 @@ async function optimizer(root) {
   });
 }
 
+// src/node/plugins/index.ts
+function resolvePlugins() {
+  return [];
+}
+
+// src/node/pluginContainer.ts
+var createPluginContainer = (plugins) => {
+  class Context {
+    async resolve(id, importer) {
+      let out = await pluginContainer.resolveId(id, importer);
+      if (typeof out === "string") {
+        out = { id: out };
+      }
+      return out;
+    }
+  }
+  const pluginContainer = {
+    async resolveId(id, importer) {
+      const ctx = new Context();
+      for (const plugin of plugins) {
+        if (plugin.resolved) {
+          const newId = await plugin.resolved.call(ctx, id, importer);
+          if (newId) {
+            id = typeof newId === "string" ? newId : newId.id;
+            return { id };
+          }
+        }
+      }
+      return null;
+    },
+    async load(id) {
+      const ctx = new Context();
+      for (const plugin of plugins) {
+        if (plugin.load) {
+          const result = await plugin.load.call(ctx, id);
+          if (result) {
+            return result;
+          }
+        }
+      }
+      return null;
+    },
+    async transform(code, id) {
+      const ctx = new Context();
+      for (const plugin of plugins) {
+        if (plugin.transform) {
+          const result = await plugin.transform.call(ctx, code, id);
+          if (!result)
+            continue;
+          if (typeof result === "string") {
+            code = result;
+          } else if (result.code) {
+            code = result.code;
+          }
+        }
+      }
+      return { code };
+    }
+  };
+  return pluginContainer;
+};
+
 // src/node/server/index.ts
 async function startDevServer() {
   const app = (0, import_connect.default)();
   const root = process.cwd();
   console.log("root", root);
   const startTime = Date.now();
+  const plugins = resolvePlugins();
+  const pluginContainer = createPluginContainer(plugins);
+  const serverContext = {
+    root: process.cwd(),
+    app,
+    pluginContainer,
+    plugins
+  };
+  for (const plugin of plugins) {
+    if (plugin.configureServer) {
+      await plugin.configureServer(serverContext);
+    }
+  }
   app.listen(3e3, async () => {
     await optimizer(root);
     console.log((0, import_picocolors2.green)("No-Bundle Server start!"), `\u8017\u65F6\uFF1A${Date.now() - startTime}ms`);
