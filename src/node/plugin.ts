@@ -4,12 +4,12 @@ import { ServerContext } from "./server/index"
 
 export type ServerHook = (
   server: ServerContext
-) => () => void | void | Promise<(() => void) | void>
+) => (() => void) | void | Promise<(() => void) | void>
 
 export interface Plugin {
   name: string
   configureServer?: ServerHook
-  resolved?: (
+  resolveId?: (
     id: string,
     importer?: string
   ) => Promise<PartialResolvedId | null> | PartialResolvedId | null
