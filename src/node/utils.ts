@@ -20,6 +20,12 @@ export const isJsRequest = (id: string) => {
 export const isCssRequest = (id: string): boolean =>
   clearUrl(id).endsWith(".css")
 
+export const isImportRequest = (id: string): boolean => id.endsWith("?import")
+
+export function removeImportQuery(url: string) {
+  return url.replace(/\?import$/, "")
+}
+
 /**
  * 去除查询和哈希
  *

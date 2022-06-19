@@ -36,6 +36,14 @@ export function importAnalysisPlugin(): Plugin {
         const { s: modStart, e: modEnd, n: modSource } = importInfo
         if (!modSource) continue
 
+        // 静态资源
+        if (modSource.endsWith(".svg")) {
+          const resolveUrl = path.join(path.dirname(id), modSource)
+          // 打一个import 标记
+          ms.overwrite(modStart, modEnd, `${resolveUrl}?import`)
+          continue
+        }
+
         // 三方库
         if (BARE_IMPORT_RE.test(modSource)) {
           const bundlePath = path.join(

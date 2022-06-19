@@ -1,7 +1,12 @@
 import { NextHandleFunction } from "connect"
 import createDebug from "debug"
 
-import { isJsRequest, isCssRequest, clearUrl } from "../../utils"
+import {
+  isJsRequest,
+  isCssRequest,
+  clearUrl,
+  isImportRequest,
+} from "../../utils"
 import { ServerContext } from "../index"
 
 const debug = createDebug("dev")
@@ -41,7 +46,7 @@ export function transformMiddleware(
 
     debug("transformMiddleware:s%", url)
 
-    if (isJsRequest(url) || isCssRequest(url)) {
+    if (isJsRequest(url) || isCssRequest(url) || isImportRequest(url)) {
       let result = await transformRequest(url, serverContext)
 
       if (!result) {
