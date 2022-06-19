@@ -17,6 +17,9 @@ export const isJsRequest = (id: string) => {
   return false
 }
 
+export const isCssRequest = (id: string): boolean =>
+  clearUrl(id).endsWith(".css")
+
 /**
  * 去除查询和哈希
  *

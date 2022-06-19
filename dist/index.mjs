@@ -151,10 +151,39 @@ async function optimizer(root) {
   });
 }
 
+// src/node/plugins/css.ts
+import { readFile } from "fs-extra";
+function cssPlugin() {
+  return {
+    name: "m-vite:css",
+    load(id) {
+      if (id.endsWith(".css")) {
+        return readFile(id, "utf-8");
+      }
+    },
+    async transform(code, id) {
+      if (id.endsWith(".css")) {
+        const jsContent = `
+          const css = "${code.replace(/\n/g, "")}";
+          const style = document.createElement("style");
+          style.setAttribute("type", "text/css");
+          style.innerHTML = css;
+          document.head.appendChild(style);
+          export default css;
+          `.trim();
+        return {
+          code: jsContent
+        };
+      }
+      return null;
+    }
+  };
+}
+
 // src/node/plugins/esbuild.ts
 import path5 from "path";
 import esbuild from "esbuild";
-import { readFile } from "fs-extra";
+import { readFile as readFile2 } from "fs-extra";
 
 // src/node/utils.ts
 import path4 from "path";
@@ -168,6 +197,7 @@ var isJsRequest = (id) => {
   }
   return false;
 };
+var isCssRequest = (id) => clearUrl(id).endsWith(".css");
 var clearUrl = (url) => {
   return url.replace(HASH_RE, "").replace(QUERY_RE, "");
 };
@@ -179,7 +209,7 @@ function esbuildTransformPlugin() {
     async load(id) {
       if (isJsRequest(id)) {
         try {
-          const code = await readFile(id, "utf-8");
+          const code = await readFile2(id, "utf-8");
           return code;
         } catch (e) {
           return null;
@@ -299,7 +329,12 @@ function resolvePlugin() {
 
 // src/node/plugins/index.ts
 function resolvePlugins() {
-  return [resolvePlugin(), esbuildTransformPlugin(), importAnalysisPlugin()];
+  return [
+    resolvePlugin(),
+    esbuildTransformPlugin(),
+    importAnalysisPlugin(),
+    cssPlugin()
+  ];
 }
 
 // src/node/pluginContainer.ts
@@ -361,14 +396,14 @@ var createPluginContainer = (plugins) => {
 
 // src/node/server/middlewares/indexHtml.ts
 import path8 from "path";
-import { pathExists as pathExists2, readFile as readFile2 } from "fs-extra";
+import { pathExists as pathExists2, readFile as readFile3 } from "fs-extra";
 function indexHtmlMiddleware(serverContext) {
   return async (req, res, next) => {
     if (req.url === "/") {
       const { root } = serverContext;
       const indexHtmlPath = path8.join(root, "index.html");
       if (await pathExists2(indexHtmlPath)) {
-        const rawHtml = await readFile2(indexHtmlPath, "utf-8");
+        const rawHtml = await readFile3(indexHtmlPath, "utf-8");
         let html = rawHtml;
         for (const plugin of serverContext.plugins) {
           if (plugin.transformHtml) {
@@ -410,7 +445,7 @@ function transformMiddleware(serverContext) {
     }
     const url = req.url;
     debug2("transformMiddleware:s%", url);
-    if (isJsRequest(url)) {
+    if (isJsRequest(url) || isCssRequest(url)) {
       let result = await transformRequest(url, serverContext);
       if (!result) {
         return next();

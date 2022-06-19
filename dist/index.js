@@ -159,10 +159,39 @@ async function optimizer(root) {
   });
 }
 
+// src/node/plugins/css.ts
+var import_fs_extra2 = require("fs-extra");
+function cssPlugin() {
+  return {
+    name: "m-vite:css",
+    load(id) {
+      if (id.endsWith(".css")) {
+        return (0, import_fs_extra2.readFile)(id, "utf-8");
+      }
+    },
+    async transform(code, id) {
+      if (id.endsWith(".css")) {
+        const jsContent = `
+          const css = "${code.replace(/\n/g, "")}";
+          const style = document.createElement("style");
+          style.setAttribute("type", "text/css");
+          style.innerHTML = css;
+          document.head.appendChild(style);
+          export default css;
+          `.trim();
+        return {
+          code: jsContent
+        };
+      }
+      return null;
+    }
+  };
+}
+
 // src/node/plugins/esbuild.ts
 var import_path5 = __toESM(require("path"));
 var import_esbuild2 = __toESM(require("esbuild"));
-var import_fs_extra2 = require("fs-extra");
+var import_fs_extra3 = require("fs-extra");
 
 // src/node/utils.ts
 var import_path4 = __toESM(require("path"));
@@ -176,6 +205,7 @@ var isJsRequest = (id) => {
   }
   return false;
 };
+var isCssRequest = (id) => clearUrl(id).endsWith(".css");
 var clearUrl = (url) => {
   return url.replace(HASH_RE, "").replace(QUERY_RE, "");
 };
@@ -187,7 +217,7 @@ function esbuildTransformPlugin() {
     async load(id) {
       if (isJsRequest(id)) {
         try {
-          const code = await (0, import_fs_extra2.readFile)(id, "utf-8");
+          const code = await (0, import_fs_extra3.readFile)(id, "utf-8");
           return code;
         } catch (e) {
           return null;
@@ -256,7 +286,7 @@ function importAnalysisPlugin() {
 // src/node/plugins/resolve.ts
 var import_resolve2 = __toESM(require("resolve"));
 var import_path7 = __toESM(require("path"));
-var import_fs_extra3 = require("fs-extra");
+var import_fs_extra4 = require("fs-extra");
 function resolvePlugin() {
   let serverContext;
   return {
@@ -266,11 +296,11 @@ function resolvePlugin() {
     },
     async resolveId(id, importer) {
       if (import_path7.default.isAbsolute(id)) {
-        if (await (0, import_fs_extra3.pathExists)(id)) {
+        if (await (0, import_fs_extra4.pathExists)(id)) {
           return { id };
         }
         id = import_path7.default.join(serverContext.root, id);
-        if (await (0, import_fs_extra3.pathExists)(id)) {
+        if (await (0, import_fs_extra4.pathExists)(id)) {
           return { id };
         }
       } else if (id.startsWith(".")) {
@@ -281,7 +311,7 @@ function resolvePlugin() {
         let resolveId;
         if (hasExtension) {
           resolveId = import_resolve2.default.sync(id, { basedir: import_path7.default.dirname(importer) });
-          if (await (0, import_fs_extra3.pathExists)(resolveId)) {
+          if (await (0, import_fs_extra4.pathExists)(resolveId)) {
             return { id: resolveId };
           }
         } else {
@@ -291,7 +321,7 @@ function resolvePlugin() {
               resolveId = import_resolve2.default.sync(withExtension, {
                 basedir: import_path7.default.dirname(importer)
               });
-              if (await (0, import_fs_extra3.pathExists)(resolveId)) {
+              if (await (0, import_fs_extra4.pathExists)(resolveId)) {
                 return { id: resolveId };
               }
             } catch (error) {
@@ -307,7 +337,12 @@ function resolvePlugin() {
 
 // src/node/plugins/index.ts
 function resolvePlugins() {
-  return [resolvePlugin(), esbuildTransformPlugin(), importAnalysisPlugin()];
+  return [
+    resolvePlugin(),
+    esbuildTransformPlugin(),
+    importAnalysisPlugin(),
+    cssPlugin()
+  ];
 }
 
 // src/node/pluginContainer.ts
@@ -369,14 +404,14 @@ var createPluginContainer = (plugins) => {
 
 // src/node/server/middlewares/indexHtml.ts
 var import_path8 = __toESM(require("path"));
-var import_fs_extra4 = require("fs-extra");
+var import_fs_extra5 = require("fs-extra");
 function indexHtmlMiddleware(serverContext) {
   return async (req, res, next) => {
     if (req.url === "/") {
       const { root } = serverContext;
       const indexHtmlPath = import_path8.default.join(root, "index.html");
-      if (await (0, import_fs_extra4.pathExists)(indexHtmlPath)) {
-        const rawHtml = await (0, import_fs_extra4.readFile)(indexHtmlPath, "utf-8");
+      if (await (0, import_fs_extra5.pathExists)(indexHtmlPath)) {
+        const rawHtml = await (0, import_fs_extra5.readFile)(indexHtmlPath, "utf-8");
         let html = rawHtml;
         for (const plugin of serverContext.plugins) {
           if (plugin.transformHtml) {
@@ -418,7 +453,7 @@ function transformMiddleware(serverContext) {
     }
     const url = req.url;
     debug2("transformMiddleware:s%", url);
-    if (isJsRequest(url)) {
+    if (isJsRequest(url) || isCssRequest(url)) {
       let result = await transformRequest(url, serverContext);
       if (!result) {
         return next();
