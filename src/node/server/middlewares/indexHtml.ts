@@ -4,7 +4,7 @@ import { fstat, pathExists, readFile } from "fs-extra"
 
 import { ServerContext } from "../index"
 
-export function indexHtmlMiddware(
+export function indexHtmlMiddleware(
   serverContext: ServerContext
 ): NextHandleFunction {
   return async (req, res, next) => {
