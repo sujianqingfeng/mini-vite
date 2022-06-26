@@ -1,6 +1,6 @@
-import path from "path"
+import path from 'path'
 
-import { HASH_RE, JS_TYPES_RE, QUERY_RE } from "./constants"
+import { HASH_RE, JS_TYPES_RE, QUERY_RE } from './constants'
 
 export const isJsRequest = (id: string) => {
   id = clearUrl(id)
@@ -10,7 +10,7 @@ export const isJsRequest = (id: string) => {
   }
 
   // 没有后缀 并且不是/结尾
-  if (!path.extname(id) && !id.endsWith("/")) {
+  if (!path.extname(id) && !id.endsWith('/')) {
     return true
   }
 
@@ -18,12 +18,12 @@ export const isJsRequest = (id: string) => {
 }
 
 export const isCssRequest = (id: string): boolean =>
-  clearUrl(id).endsWith(".css")
+  clearUrl(id).endsWith('.css')
 
-export const isImportRequest = (id: string): boolean => id.endsWith("?import")
+export const isImportRequest = (id: string): boolean => id.endsWith('?import')
 
 export function removeImportQuery(url: string) {
-  return url.replace(/\?import$/, "")
+  return url.replace(/\?import$/, '')
 }
 
 /**
@@ -33,5 +33,11 @@ export function removeImportQuery(url: string) {
  * @returns
  */
 export const clearUrl = (url: string) => {
-  return url.replace(HASH_RE, "").replace(QUERY_RE, "")
+  return url.replace(HASH_RE, '').replace(QUERY_RE, '')
+}
+
+
+export function getShortName(file: string, root: string) {
+  // posix 跨平台
+  return file.startsWith(root + '/') ? path.posix.relative(root, file) : file
 }
